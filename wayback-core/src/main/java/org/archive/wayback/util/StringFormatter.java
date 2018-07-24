@@ -22,7 +22,6 @@ package org.archive.wayback.util;
 import java.text.DateFormat;
 import java.text.Format;
 import java.text.MessageFormat;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -46,18 +45,18 @@ import org.apache.commons.lang.StringEscapeUtils;
 public class StringFormatter {
 	private final static TimeZone TZ_UTC = TimeZone.getTimeZone("UTC");
 	
-	ResourceBundle bundle = null;
-	Locale locale = null;
-	Map<String,MessageFormat> formats = null;
+	final ResourceBundle bundle;
+	final Locale locale;
+	final Map<String,MessageFormat> formats;
 	/**
 	 * Construct a StringFormatter...
 	 * @param bundle ResourceBundle to lookup patterns for MessageFormat 
 	 * objects.
-	 * @param locale to use, where applicable with MessageFormat objects
 	 */
 	public StringFormatter(ResourceBundle bundle) {
-		this(null,Locale.getDefault());
+		this(null, Locale.getDefault());
 	}
+        
 	/**
 	 * Construct a StringFormatter...
 	 * @param bundle ResourceBundle to lookup patterns for MessageFormat 
@@ -67,25 +66,32 @@ public class StringFormatter {
 	public StringFormatter(ResourceBundle bundle, Locale locale) {
 		this.bundle = bundle;
 		this.locale = locale;
-		formats = new HashMap<String,MessageFormat>();
+		this.formats = new HashMap<String, MessageFormat>();
 	}
-	
+	/**
+	 * return {@code ResourceBundle} set to this object.
+	 * (for migration to JSTL.)
+	 * @return {@code ResourceBundle}
+	 */
+	public ResourceBundle getResourceBundle() {
+		return bundle;
+	}
+
 	public MessageFormat getFormat(String pattern) {
 		MessageFormat format = formats.get(pattern);
-		if(format == null) {
+		if (format == null) {
 			format = new MessageFormat(pattern,locale);
 			// lets try to make sure any internal DateFormats use UTC:
 			Format[] subFormats = format.getFormats();
-			if(subFormats != null) {
-				for(Format subFormat : subFormats) {
-					if(subFormat instanceof DateFormat) {
-						DateFormat subDateFormat = (DateFormat) subFormat;
+			if (subFormats != null) {
+				for (Format subFormat : subFormats) {
+					if (subFormat instanceof DateFormat) {
+						DateFormat subDateFormat = (DateFormat)subFormat;
 						subDateFormat.setTimeZone(TZ_UTC);
 					}
 				}
 			}
-
-			formats.put(pattern,format);
+			formats.put(pattern, format);
 		}
 		return format;
 	}
@@ -98,7 +104,7 @@ public class StringFormatter {
 	 * something goes wrong...
 	 */
 	public String getLocalized(String key) {
-		if(bundle != null) {
+		if (bundle != null) {
 			try {
 				return bundle.getString(key);
 	//			String localized = bundle.getString(key);
@@ -122,86 +128,22 @@ public class StringFormatter {
 		return key;
 	}
 	
-	// What gives? This works in the Junit test, but not in jsps...
-//	/**
-//	 * @param key String property name in UI.properties file to use as the 
-//	 * pattern for interpolation
-//	 * @param objects array of things to interpolate within the MessageFormat
-//	 * 	described by the pattern in UI.properties for key key
-//	 * @return Localized Formatted String for key, interpolated with args
-//	 */
-//	public String format(String key, Object...objects) {
-//		return formatInner(key,objects);
-//	}
 	/**
 	 * Localize a string key from the UI.properties file
-	 * @param key String property name in UI.properties file to use as the 
-	 * pattern for the MessageFormat
-	 * @return Localized String for key
-	 */
-	public String format(String key) {
-		Object args[] = {};
-		return formatInner(key,args);
-	}
-	/**
+     * 
 	 * @param key String property name in UI.properties file to use as the 
 	 * pattern for interpolation
-	 * @param o1 thing1 to interpolate within the MessageFormat
+	 * @param objects array of things to interpolate within the MessageFormat
 	 * 	described by the pattern in UI.properties for key key
 	 * @return Localized Formatted String for key, interpolated with argument objects
 	 */
-	public String format(String key,Object o1) {
-		Object args[] = {o1};
-		return formatInner(key,args);
-	}
-	/**
-	 * @param key String property name in UI.properties file to use as the 
-	 * pattern for interpolation
-	 * @param o1 thing1 to interpolate within the MessageFormat
-	 * 	described by the pattern in UI.properties for key key
-	 * @param o2 thing2 to interpolate within the MessageFormat
-	 * 	described by the pattern in UI.properties for key key
-	 * @return Localized Formatted String for key, interpolated with argument objects
-	 */
-	public String format(String key,Object o1,Object o2) {
-		Object args[] = {o1,o2};
-		return formatInner(key,args);
-	}
-	/**
-	 * @param key String property name in UI.properties file to use as the 
-	 * pattern for interpolation
-	 * @param o1 thing1 to interpolate within the MessageFormat
-	 * 	described by the pattern in UI.properties for key key
-	 * @param o2 thing2 to interpolate within the MessageFormat
-	 * 	described by the pattern in UI.properties for key key
-	 * @param o3 thing3 to interpolate within the MessageFormat
-	 * 	described by the pattern in UI.properties for key key
-	 * @return Localized Formatted String for key, interpolated with argument objects
-	 */
-	public String format(String key,Object o1,Object o2,Object o3) {
-		Object args[] = {o1,o2,o3};
-		return formatInner(key,args);
-	}
-	/**
-	 * @param key String property name in UI.properties file to use as the 
-	 * pattern for interpolation
-	 * @param o1 thing1 to interpolate within the MessageFormat
-	 * 	described by the pattern in UI.properties for key key
-	 * @param o2 thing2 to interpolate within the MessageFormat
-	 * 	described by the pattern in UI.properties for key key
-	 * @param o3 thing3 to interpolate within the MessageFormat
-	 * 	described by the pattern in UI.properties for key key
-	 * @param o4 thing4 to interpolate within the MessageFormat
-	 * 	described by the pattern in UI.properties for key key
-	 * @return Localized Formatted String for key, interpolated with argument objects
-	 */
-	public String format(String key,Object o1,Object o2,Object o3,Object o4) {
-		Object args[] = {o1,o2,o3,o4};
-		return formatInner(key,args);
+	public String format(String key, Object... objects) {
+		return formatInner(key, objects);
 	}
 
 	/**
-	 * handy shortcut to the apache StringEscapeUtils
+	 * handy shortcut to the Apache StringEscapeUtils.
+	 * <p>Intended for JSP use. Otherwise use {@link StringEscapeUtils#escapeHtml(String)} instead.</p>
 	 * @param raw string to be escaped
 	 * @return the string escaped so it's safe for insertion in HTML
 	 */
@@ -209,7 +151,8 @@ public class StringFormatter {
 		return StringEscapeUtils.escapeHtml(raw);
 	}
 	/**
-	 * handy shortcut to the apache StringEscapeUtils
+	 * handy shortcut to the Apache StringEscapeUtils.
+	 * <p>Intended for JSP use. Otherwise use {@link StringEscapeUtils#escapeJavaScript(String)} instead.</p>
 	 * @param raw string to be escaped
 	 * @return the string escaped so it's safe for insertion in Javascript
 	 */
@@ -229,13 +172,13 @@ public class StringFormatter {
 	public static String join(String delim, String...stuff) {
 		int max = stuff.length - 1;
 		int len = delim.length() * max;
-		for(String s : stuff) {
+		for (String s : stuff) {
 			len += s.length();
 		}
 		StringBuilder sb = new StringBuilder(len);
-		for(int i = 0; i < stuff.length; i++) {
+		for (int i = 0; i < stuff.length; i++) {
 			sb.append(stuff[i]);
-			if(i < max) {
+			if (i < max) {
 				sb.append(delim);
 			}
 		}

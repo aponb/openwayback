@@ -1,38 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="Wayback">
+<project name="OpenWayback">
   <bannerLeft>
-    <name>Wayback</name>
-    <src>images/ia_logo.gif</src>
-    <href>http://archive-access.sourceforge.net/projects/wayback/</href>
+    <name>${project.name}</name>
+    <src>images/OpenWayback-banner100.png</src>
+    <href>/</href>
   </bannerLeft>
   <bannerRight>
-    <name>Wayback</name>
+    <name>International Internet Preservation Consortium</name>
+    <src>images/iipc_logo.png</src>
+    <href>http://netpreserve.org/</href>
   </bannerRight>
+  <skin>
+    <groupId>org.apache.maven.skins</groupId>
+    <artifactId>maven-fluido-skin</artifactId>
+    <version>1.3.0</version>
+  </skin>
   <body>
+    <breadcrumbs>
+      <item name="OpenWayback wiki" href="https://github.com/iipc/openwayback/wiki"/>
+      <item name="OpenWayback" href="index.html"/>
+    </breadcrumbs>
 
     <links>
-      <item name="Sourceforge" href="http://www.sourceforge.net"/>
-      <item name="Heritrix" href="http://crawler.archive.org"/>
-      <item name="NutchWAX" href="http://archive-access.sourceforge.net/projects/nutchwax/"/>
-      <item name="Archive Access" href="http://archive-access.sourceforge.net"/>
-      <item name="Internet Archive" href="http://www.archive.org"/>
+      <item name="GitHub" href="https://github.com/iipc/openwayback"/>
       <item name="Home" href="index.html"/>
     </links>
 
     <menu name="Overview">
-      <item name="Requirements" href="requirements.html"/>
-      <item name="Downloads" href="downloads.html"/>
-      <item name="Administrator Manual" href="administrator_manual.html"/>
-      <item name="URL Prefixes and AccessPoint names" href="access_point_naming.html"/>
-      <item name="Hadoop CDX Generation" href="hadoop.html"/>
+      <item name="Installation" href="How-to-install.html"/>
+      <item name="Configuration" href="How-to-configure.html"/>
       <item name="Release Notes" href="release_notes.html"/>
       <item name="FAQ" href="/faq.html"/>
-      <item name="API" href="./apidocs"/>
-      <item name="Browse/Submit a Bug" 
-        href="https://webarchive.jira.com/browse/ACC/component/10031"/>
+      <item name="API" href="./apidocs/index.html"/>
+      <item name="Branding and logos" href="logos.html"/>
+      <item name="Browse/Submit a Bug"
+        href="https://github.com/iipc/openwayback/issues"/>
     </menu>
 
-    <menu ref="reports"/>
-
+    <menu ref="reports" inherit="top"/>
   </body>
 </project>

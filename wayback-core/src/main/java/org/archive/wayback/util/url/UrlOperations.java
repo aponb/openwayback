@@ -24,8 +24,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.httpclient.URIException;
-import org.archive.net.UURI;
-import org.archive.net.UURIFactory;
+import org.archive.url.UsableURI;
+import org.archive.url.UsableURIFactory;
 import org.archive.wayback.archivalurl.ArchivalUrl;
 import org.archive.wayback.core.WaybackRequest;
 import org.archive.wayback.webapp.AccessPoint;
@@ -148,11 +148,13 @@ public class UrlOperations {
 	
 	/** Resolve URL, but return a minimally escaped version in case of
 	 *  error
-	 * @param baseUrl
-	 * @param url
-	 * @return
+	 * @param baseUrl the base URL against which the url should be resolved
+	 * @param url the URL, possibly relative, to make absolute.
+	 * @return url resolved against baseUrl, unless it is absolute already, and
+	 * further transformed by whatever escaping normally takes place with a 
+	 * UsableURI.
+	 * In case of error, return URL.
 	 */
-	
 	public static String resolveUrl(String baseUrl, String url) {
 		String resolvedUrl = resolveUrl(baseUrl, url, null);
 		if (resolvedUrl == null) {
@@ -166,9 +168,10 @@ public class UrlOperations {
 	 * Resolve a possibly relative url argument against a base URL.
 	 * @param baseUrl the base URL against which the url should be resolved
 	 * @param url the URL, possibly relative, to make absolute.
+         * @param defaultValue The default value to return if the supplied values can't be resolved.
 	 * @return url resolved against baseUrl, unless it is absolute already, and
 	 * further transformed by whatever escaping normally takes place with a 
-	 * UURI.
+	 * UsableURI.
 	 * In case of error, return the defaultValue
 	 */
 	public static String resolveUrl(String baseUrl, String url, String defaultValue) {
@@ -176,7 +179,7 @@ public class UrlOperations {
 		for(final String scheme : ALL_SCHEMES) {
 			if(url.startsWith(scheme)) {
 				try {
-					return UURIFactory.getInstance(url).getEscapedURI();
+					return UsableURIFactory.getInstance(url).getEscapedURI();
 				} catch (URIException e) {
 					LOGGER.warning(e.getLocalizedMessage() + ": " + url);
 					// can't let a space exist... send back close to whatever came
@@ -185,11 +188,11 @@ public class UrlOperations {
 				}
 			}
 		}
-		UURI absBaseURI;
-		UURI resolvedURI = null;
+		UsableURI absBaseURI;
+		UsableURI resolvedURI = null;
 		try {
-			absBaseURI = UURIFactory.getInstance(baseUrl);
-			resolvedURI = UURIFactory.getInstance(absBaseURI, url);
+			absBaseURI = UsableURIFactory.getInstance(baseUrl);
+			resolvedURI = UsableURIFactory.getInstance(absBaseURI, url);
 		} catch (URIException e) {
 			LOGGER.warning(e.getLocalizedMessage() + ": " + url);
 			return defaultValue;
@@ -308,6 +311,7 @@ public class UrlOperations {
 	 * @param orig String containing a URL, possibly beginning with "http:/".
 	 * @return original string if orig begins with "http://", or a new String
 	 * with the extra slash, if orig only had one slash.
+	 * @see #fixupScheme
 	 */
 	public static String fixupHTTPUrlWithOneSlash(String orig) {
 		if(orig.startsWith("http:/") && ! orig.startsWith(HTTP_SCHEME)) {
@@ -318,7 +322,30 @@ public class UrlOperations {
 		}
 		return orig;
 	}
-	
+		
+	/**
+	 * fixes up malformed scheme part.
+	 * <p>currently supports fixing missing second slash for protocols
+	 * {@code http}, {@code https}, {@code ftp}, {@code rtsp} and
+	 * {@code mms}. For example fixing {@code http:/} to {@code https://}</p>
+	 * @param url URL to be checked and fixed
+	 * @return new String, or {@code url} if not fix is required.
+	 * @since 1.8.1
+	 */
+	public static String fixupScheme(String url) {
+		final String[] SCHEMES = {
+			"http:/", "https:/", "ftp:/", "rtsp:/", "mms:/"
+		};
+		int ul = url.length();
+		for (String scheme : SCHEMES) {
+			int sl = scheme.length();
+			if (url.startsWith(scheme) && (ul == sl || url.charAt(sl) != '/')) {
+				return scheme + "/" + url.substring(sl);
+			}
+		}
+		return url;
+	}
+
 	/**
 	 * Attempt to extract the hostname component of an absolute URL argument.
 	 * @param url the url String from which to extract the hostname
@@ -377,9 +404,8 @@ public class UrlOperations {
 	 * invalid, or if the url is the root of the authority.
 	 */
 	public static String getUrlParentDir(String url) {
-		
 		try {
-			UURI uri = UURIFactory.getInstance(url);
+			UsableURI uri = UsableURIFactory.getInstance(url);
 			String path = uri.getPath();
 			if(path.length() > 1) {
 				int startIdx = path.length()-1;
@@ -390,7 +416,7 @@ public class UrlOperations {
 				if(idx >= 0) {
 					uri.setPath(path.substring(0,idx+1));
 					uri.setQuery(null);
-					return uri.toString();
+                    return uri.toUnicodeHostString();
 				}
 			}
 		} catch (URIException e) {
@@ -399,8 +425,16 @@ public class UrlOperations {
 		return null;
 	}
 	
-	public static String computeIdentityUrl(WaybackRequest wbRequest)
-	{
+	/**
+	 * build replay Archival-URL for the same capture as request
+	 * {@code wbRequest}, with identity-context ({@code id_}) flag on.
+	 * <p>
+	 * REFACTOR: move this method to {@link ArchivalUrl}.
+	 * </p>
+	 * @param wbRequest requested capture and URL scheme info.
+	 * @return URL string
+	 */
+	public static String computeIdentityUrl(WaybackRequest wbRequest) {
 		AccessPoint accessPoint = wbRequest.getAccessPoint();
 
 		boolean origIdentity = wbRequest.isIdentityContext();

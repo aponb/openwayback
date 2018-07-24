@@ -26,9 +26,8 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.commons.httpclient.URIException;
-import org.apache.commons.lang.StringEscapeUtils;
-import org.archive.net.UURI;
-import org.archive.net.UURIFactory;
+import org.archive.url.UsableURI;
+import org.archive.url.UsableURIFactory;
 import org.archive.wayback.core.CaptureSearchResult;
 /**
  * Class which tracks the context and state involved with parsing an HTML
@@ -48,8 +47,9 @@ public class ParseContext {
 	private static final Logger LOGGER = Logger.getLogger(
 			ParseContext.class.getName());
 
-	protected UURI baseUrl = null;
+	protected UsableURI baseUrl = null;
 
+	private boolean inHTML = false;
 	private boolean inCSS = false;
 	private boolean inJS = false;
 	private boolean inScriptText = false;
@@ -84,44 +84,54 @@ public class ParseContext {
 	public Map<String,String> getMap() {
 		return data;
 	}
+
+	/**
+	 * @param baseURL an base URL for relative URLs
+	 */
+	public void setBaseUrl(String baseURL) {
+		try {
+			baseUrl = UsableURIFactory.getInstance(baseURL);
+		} catch (URIException ex) {
+			// XXX
+			ex.printStackTrace();
+		}
+	}
+
 	/**
 	 * @param url against which relative URLs should be resolved for this parse
 	 */
 	public void setBaseUrl(URL url) {
-		try {
-			baseUrl = UURIFactory.getInstance(url.toExternalForm());
-		} catch (URIException e) {
-			e.printStackTrace();
-		}
+		setBaseUrl(url.toExternalForm());
 	}
+
 	/**
-	 * @param url which should be resolved against the baseUrl for this 
-	 * ParseContext.
-	 * @return absolute form of url, resolved against baseUrl if relative.
+	 * Resolve possibly-relative {@code url} with {@code baseUrl} set to
+	 * this object. 
+	 * <p>Caveat: this method no longer unescape HTML entities in {@code url}.
+	 * HTML entities must be all unescaped before calling method.</p>
+	 * @param url which should be resolved
+	 * @return absolute URL.
 	 * @throws URISyntaxException if the input URL is malformed
 	 */
 	public String resolve(String url) throws URISyntaxException {
-		// BUG in Translate.decode(): "foo?a=b&lang=en" acts as if it 
-		// was "&lang;"
-//		url = Translate.decode(url);
-		url = StringEscapeUtils.unescapeHtml(url);
 		int hashIdx = url.indexOf('#');
 		String frag = "";
-		if(hashIdx != -1) {
+		if (hashIdx != -1) {
 			frag = url.substring(hashIdx);
-			url = url.substring(0,hashIdx);
+			url = url.substring(0, hashIdx);
 		}
 		
-		if(baseUrl == null) {
+		if (baseUrl == null) {
 			// TODO: log ?
 			return url + frag;
 		}
 		
 		try {
-			return UURIFactory.getInstance(baseUrl, url).toString() + frag;
+			url = UsableURIFactory.getInstance(baseUrl, url).toString() + frag;
 		} catch (URIException e) {
 			LOGGER.warning("FAILED RESOLVE: base(" + baseUrl + ") frag(" + url +
 					") error(" + e.getMessage() + ")");
+			url = url + frag;
 		}
 		return url;
 	}
@@ -131,7 +141,7 @@ public class ParseContext {
 	 * @return absolute form of input url, or url itself if javascript:
 	 */
 	public String contextualizeUrl(String url) {
-	    if(url.startsWith("javascript:")) {
+	    if(url.startsWith("javascript:") || url.startsWith("#")) {
 	    	return url;
 	    }
 		try {
@@ -140,6 +150,20 @@ public class ParseContext {
 			e.printStackTrace();
 			return url;
 		}
+	}
+
+	/**
+	 * set to {@code true} when any HTML open tag
+	 * is found.
+	 * <p>used for checking if the content really
+	 * looks like an HTML document.</p>
+	 * @param inHTML
+	 */
+	public void setInHTML(boolean inHTML) {
+		this.inHTML = inHTML;
+	}
+	public boolean isInHTML() {
+		return inHTML;
 	}
 
 	/**

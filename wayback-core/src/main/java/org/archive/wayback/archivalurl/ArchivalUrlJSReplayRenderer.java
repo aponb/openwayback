@@ -20,8 +20,6 @@
 package org.archive.wayback.archivalurl;
 
 import java.io.IOException;
-import java.util.Iterator;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,12 +38,24 @@ import org.archive.wayback.replay.TextReplayRenderer;
 import org.archive.wayback.util.Timestamp;
 
 /**
- * ReplayRenderer which attempts to rewrite absolute URLs within a 
- * text/javascript document to make them load correctly from an ArchivalURL
- * AccessPoint.
- * 
+ * {@link TextReplayRenderer} that rewrites URLs in JavaScript resource for
+ * replay in ArchivalURL mode, and inserts {@code jspInserts} at the top of the
+ * document.
+ * <p>This class looks up URLs in JavaScript by single regular expression set to
+ * its {@code regex} property, and rewrite them with {@link ResultURIConverter}
+ * passed to {@code updatePage} method (does not use the one set to {@link TextDocument}.)</p>
+ * <p>Regular expression shall match single URL. Be sure to enclose URL in capture group
+ * (i.e. {@code (}...{@code )}), or no rewrite will happen.  Regular expression can have
+ * optional capture group before URL capture group, which may be necessary for doing
+ * more complicated match.  Text captured in the first group will be copied to the
+ * output.</p>
+ * <p>There's an alternative implementation
+ * {@link ArchivalURLJSStringTransformerReplayRenderer}, which supports
+ * multiple rewrite patterns through <code>StringTransformer</code>.</p>
+ *
+ * @see ResultURIConverter
+ * @see ArchivalURLJSStringTransformerReplayRenderer
  * @author brad
- * @version $Date$, $Revision$
  */
 
 public class ArchivalUrlJSReplayRenderer extends TextReplayRenderer {
@@ -62,6 +72,10 @@ public class ArchivalUrlJSReplayRenderer extends TextReplayRenderer {
 	
 	private Pattern pattern = defaultHttpPattern;
 	
+	/**
+	 * regular expression for matching URLs.
+	 * @param regex
+	 */
 	public void setRegex(String regex)
 	{
 		pattern = Pattern.compile(regex);
@@ -108,19 +122,7 @@ public class ArchivalUrlJSReplayRenderer extends TextReplayRenderer {
 		page.sb.append(replaced);
 
 		// if any JS-specific jsp inserts are configured, run and insert...
-		List<String> jspInserts = getJspInserts();
-
-		StringBuilder toInsert = new StringBuilder(300);
-
-		if (jspInserts != null) {
-			Iterator<String> itr = jspInserts.iterator();
-			while (itr.hasNext()) {
-				toInsert.append(page.includeJspString(itr.next(), httpRequest,
-						httpResponse, wbRequest, results, result, resource));
-			}
-		}
-
-		page.insertAtStartOfDocument(toInsert.toString());
-
+		page.insertAtStartOfDocument(buildInsertText(page, httpRequest,
+				httpResponse, wbRequest, results, result, resource));
 	}
 }

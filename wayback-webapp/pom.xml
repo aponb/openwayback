@@ -1,21 +1,18 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                             http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <artifactId>wayback</artifactId>
-    <groupId>org.archive.wayback</groupId>
-    <version>1.8.0-SNAPSHOT</version>
+    <artifactId>openwayback</artifactId>
+    <groupId>org.netpreserve.openwayback</groupId>
+    <version>2.4.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>wayback-webapp</artifactId>
-  <name>Wayback Web Application</name>
+  <artifactId>openwayback-webapp</artifactId>
+  <name>OpenWayback Web Application</name>
   <packaging>war</packaging>
 
   <build>
-    <finalName>wayback-${project.version}</finalName>
+    <finalName>openwayback-${project.version}</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-war-plugin</artifactId>
@@ -42,7 +39,13 @@
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>wayback-core</artifactId>
+      <artifactId>openwayback-core</artifactId>
+    </dependency>
+    <dependency>
+      <!-- This is only required for ORE.jsp which should be removed as Memento support is now done elsewhere I think. -->
+      <groupId>com.googlecode.foresite-toolkit</groupId>
+      <artifactId>foresite</artifactId>
+      <version>0.9</version>
     </dependency>
   </dependencies>
 

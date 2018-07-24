@@ -23,16 +23,15 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.text.ParseException;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.archive.wayback.ResultURIConverter;
-import org.archive.wayback.core.Resource;
 import org.archive.wayback.core.CaptureSearchResult;
 import org.archive.wayback.core.CaptureSearchResults;
+import org.archive.wayback.core.Resource;
 import org.archive.wayback.core.UIResults;
 import org.archive.wayback.core.WaybackRequest;
 
@@ -266,16 +265,24 @@ public class TextDocument {
 	}
 
 	/**
+	 * insert {@code toInsert} at the beginning of this text.
 	 * @param toInsert
 	 */	
-	public void insertAtStartOfDocument(String toInsert) {
+	public final void insertAtStartOfDocument(CharSequence toInsert) {
 		sb.insert(0,toInsert);
+	}
+
+	/**
+	 * @param charSequence
+	 */	
+	public void insertAtEndOfDocument(CharSequence charSequence) {
+		sb.append("\n" + charSequence);
 	}
 
 	/**
 	 * @param toInsert
 	 */	
-	public void insertAtStartOfHead(String toInsert) {
+	public void insertAtStartOfHead(CharSequence toInsert) {
 		int insertPoint = TagMagix.getEndOfFirstTag(sb,"head");
 		if (-1 == insertPoint) {
 			insertPoint = 0;
@@ -286,7 +293,7 @@ public class TextDocument {
 	/**
 	 * @param toInsert
 	 */
-	public void insertAtEndOfBody(String toInsert) {
+	public void insertAtEndOfBody(CharSequence toInsert) {
 		int insertPoint = sb.lastIndexOf("</body>");
 		if (-1 == insertPoint) {
 			insertPoint = sb.lastIndexOf("</BODY>");
@@ -299,29 +306,36 @@ public class TextDocument {
 	/**
 	 * @param toInsert
 	 */
-	public void insertAtStartOfBody(String toInsert) {
+	public void insertAtStartOfBody(CharSequence toInsert) {
 		int insertPoint = TagMagix.getEndOfFirstTag(sb,"body");
 		if (-1 == insertPoint) {
 			insertPoint = 0;
 		}
 		sb.insert(insertPoint,toInsert);
-	}	
+	}
+        
 	/**
 	 * @param jspPath
 	 * @param httpRequest
 	 * @param httpResponse
 	 * @param wbRequest
 	 * @param results
+         * @param result
+         * @param resource
 	 * @return
+         * 
 	 * @throws IOException 
 	 * @throws ServletException 
-	 * @throws ParseException 
 	 */
 	public String includeJspString(String jspPath, 
 			HttpServletRequest httpRequest, HttpServletResponse httpResponse,
 			WaybackRequest wbRequest, CaptureSearchResults results, 
 			CaptureSearchResult result, Resource resource) 
 	throws ServletException, IOException {
+		
+		if (wbRequest.isAjaxRequest()) {
+			return "";
+		}
 		
 		UIResults uiResults = new UIResults(wbRequest,uriConverter,results,
 				result,resource);
@@ -333,8 +347,8 @@ public class TextDocument {
 	}
 	
 	/**
-	 * @param jsUrl
-	 * @return
+	 * @param jsUrl The javascript URL to be wrapped
+	 * @return A <code>&ltscript&gt</code> tag containing the provided javascript URL.
 	 */
 	public String getJSIncludeString(final String jsUrl) {
 		return "<script type=\"text/javascript\" src=\"" 
@@ -359,9 +373,12 @@ public class TextDocument {
 		private static final String EMAIL_PROTOCOL_PREFIX = "mailto:";
 		private static final String JAVASCRIPT_PROTOCOL_PREFIX = "javascript:";
 		private ResultURIConverter base = null;
+                
 		public SpecialResultURIConverter(ResultURIConverter base) {
 			this.base = base;
 		}
+                
+                @Override
 		public String makeReplayURI(String datespec, String url) {
 			if(url.startsWith(EMAIL_PROTOCOL_PREFIX)) {
 				return url;
@@ -377,9 +394,12 @@ public class TextDocument {
 		private static final String MMS_PROTOCOL_PREFIX = "mms://";
 		private static final String HTTP_PROTOCOL_PREFIX = "http://";
 		private ResultURIConverter base = null;
-		public MMSToHTTPResultURIConverter(ResultURIConverter base) {
+
+                public MMSToHTTPResultURIConverter(ResultURIConverter base) {
 			this.base = base;
 		}
+                
+                @Override
 		public String makeReplayURI(String datespec, String url) {
 			if(url.startsWith(MMS_PROTOCOL_PREFIX)) {
 				url = HTTP_PROTOCOL_PREFIX + 

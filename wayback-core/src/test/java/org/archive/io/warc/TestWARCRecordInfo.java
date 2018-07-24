@@ -27,7 +27,7 @@ import org.archive.util.DateUtils;
  */
 public class TestWARCRecordInfo extends WARCRecordInfo implements WARCConstants, ArchiveFileConstants {
 
-    final static String REVISIT_WARC_PROFILE =
+    public final static String REVISIT_WARC_PROFILE =
             "http://netpreserve.org/warc/1.0/revisit/identical-payload-digest";
     
     public TestWARCRecordInfo(byte[] content) {
@@ -92,13 +92,30 @@ public class TestWARCRecordInfo extends WARCRecordInfo implements WARCConstants,
             throws IOException {
         return new TestWARCRecordInfo(buildHttpResponseBlock(ctype, payloadBytes));
     }
+    /**
+     * return TestWARCRecordInfo for HTTP Response with response status line {@code status},
+     * entity {@code payload} of content-type {@code ctype}.
+     * @param status status line, such as {@code "200 OK"}
+     * @param ctype content-type
+     * @param payloadBytes payload bytes
+     * @return TestWARCRecordInfo
+     * @throws IOException
+     */
+	public static TestWARCRecordInfo createHttpResponse(String status,
+			String ctype, byte[] payloadBytes) throws IOException {
+		return new TestWARCRecordInfo(buildHttpResponseBlock(status, ctype, payloadBytes));
+	}
     public static TestWARCRecordInfo createCompressedHttpResponse(String ctype,
             byte[] payloadBytes) throws IOException {
         return new TestWARCRecordInfo(buildCompressedHttpResponseBlock(ctype, payloadBytes));
     }
     public static TestWARCRecordInfo createRevisitHttpResponse(String ctype, int len, boolean withHeader)
             throws IOException {
-        TestWARCRecordInfo recinfo = new TestWARCRecordInfo(buildRevisitHttpResponseBlock(ctype, len, withHeader));
+        return createRevisitHttpResponse(ctype, len, withHeader, false);
+    }
+    public static TestWARCRecordInfo createRevisitHttpResponse(String ctype, int len, boolean withHeader, boolean gzipContent)
+            throws IOException {
+        TestWARCRecordInfo recinfo = new TestWARCRecordInfo(buildRevisitHttpResponseBlock(ctype, len, withHeader, gzipContent));
         recinfo.setType(WARCRecordType.revisit);
         recinfo.addExtraHeader("WARC-Truncated", "length");
         recinfo.addExtraHeader("WARC-Profile", REVISIT_WARC_PROFILE);
@@ -109,7 +126,29 @@ public class TestWARCRecordInfo extends WARCRecordInfo implements WARCConstants,
             throws IOException {
         return createRevisitHttpResponse(ctype, len, true);
     }
-    
+    /**
+     * creates TestWARCRecordInfo with URL-Agnostic Revisit WARC record content.
+     * <ul>
+     * <li>{@code WARC-Refers-To-Target-URI} = {@code http://example.com/}</li>
+     * <li>{@code WARC-Refers-To-Date} = {@code 2014-01-01T10:10:10Z}</li>
+     * </ul>
+     * @param ctype Content-Type
+     * @param len Content-Length (arbitrary)
+     * @return TestWARCRecordInfo
+     * @throws IOException
+     */
+	public static TestWARCRecordInfo createUrlAgnosticRevisitHttpResponse(
+			String ctype, int len) throws IOException {
+		TestWARCRecordInfo recinfo = new TestWARCRecordInfo(
+			TestWARCRecordInfo.buildRevisitHttpResponseBlock(ctype, len, true,
+				false));
+		recinfo.setType(WARCRecordType.revisit);
+		recinfo.addExtraHeader("WARC-Truncated", "length");
+		recinfo.addExtraHeader("WARC-Profile", TestWARCRecordInfo.REVISIT_WARC_PROFILE);
+		recinfo.addExtraHeader("WARC-Refers-To-Target-URI", "http://example.com/");
+		recinfo.addExtraHeader("WARC-Refers-To-Date", "2014-01-01T10:10:10Z");
+		return recinfo;
+    }
     
     public static byte[] buildHttpResponseBlock(String payload) throws IOException {
         return buildHttpResponseBlock("text/plain", payload.getBytes());
@@ -157,7 +196,9 @@ public class TestWARCRecordInfo extends WARCRecordInfo implements WARCConstants,
         } else {
             bw.write("Content-Length: " + payloadBytes.length + CRLF);
         }
-        bw.write("Content-Type: " + ctype + CRLF);
+		if (ctype != null) {
+			bw.write("Content-Type: " + ctype + CRLF);
+		}
         bw.write(CRLF);
         bw.flush();
         if (chunked) {
@@ -173,10 +214,15 @@ public class TestWARCRecordInfo extends WARCRecordInfo implements WARCConstants,
     }
     
     public static byte[] buildHttpRedirectResponseBlock(String location) throws IOException {
+		return buildHttpRedirectResponseBlock("302 Moved Temporarily", location);
+    }
+
+	public static byte[] buildHttpRedirectResponseBlock(String statusline,
+			String location) throws IOException {
+		assert statusline.startsWith("3");
         ByteArrayOutputStream blockbuf = new ByteArrayOutputStream();
         Writer bw = new OutputStreamWriter(blockbuf);
-        String status = "302 Moved Temporarily";
-        bw.write("HTTP/1.0 " + status + CRLF);
+        bw.write("HTTP/1.0 " + statusline + CRLF);
         bw.write("Content-Length: " + 0 + CRLF);
         bw.write("Content-Type: text/html" + CRLF);
         bw.write("Location: " + location + CRLF);
@@ -222,31 +268,37 @@ public class TestWARCRecordInfo extends WARCRecordInfo implements WARCConstants,
      * @param len value for Content-Length
      * @param withHeader include HTTP status line and headers.
      *      passing false generates old-style revisit content block.
+     * @param gzipContent if true, block will have "Content-Encoding: gzip" header.
+     *      (this shall match the compress-ness of previous capture).
      * @return record content as byte array
      * @throws IOException
      */
-    public static byte[] buildRevisitHttpResponseBlock(String ctype, int len,
-            boolean withHeader) throws IOException {
-        ByteArrayOutputStream blockbuf = new ByteArrayOutputStream();
-        Writer bw = new OutputStreamWriter(blockbuf);
-        if (withHeader) {
-            bw.write("HTTP/1.0 200 OK" + CRLF);
-            bw.write("Content-Length: " + len + CRLF);
-            bw.write("Content-Type: " + ctype + CRLF);
-            bw.write(CRLF);
-            bw.flush();
-            bw.close();
-        }
-        return blockbuf.toByteArray();
-    }
+	public static byte[] buildRevisitHttpResponseBlock(String ctype, int len,
+			boolean withHeader, boolean gzipContent) throws IOException {
+		ByteArrayOutputStream blockbuf = new ByteArrayOutputStream();
+		Writer bw = new OutputStreamWriter(blockbuf);
+		if (withHeader) {
+			bw.write("HTTP/1.0 200 OK" + CRLF);
+			if (len >= 0) {
+				bw.write("Content-Length: " + len + CRLF);
+			}
+			bw.write("Content-Type: " + ctype + CRLF);
+			if (gzipContent)
+				bw.write("Content-Encoding: gzip" + CRLF);
+			bw.write(CRLF);
+			bw.flush();
+			bw.close();
+		}
+		return blockbuf.toByteArray();
+	}
 
     // POPULAR PAYLOAD SAMPLES
     
     // ubiquitous 1-pixel transparent GIF, if you wonder.
     public static final byte[] PAYLOAD_GIF = new byte[] {
-            71, 73, 70, 56, 57, 97, 1, 0, 1, 0, -128, 0, 0, -64, -64, -64,
-            0, 0, 0, 33, -7, 4, 1, 0, 0, 0, 0, 44, 0, 0, 0, 0,
-            1, 0, 1, 0, 0, 2, 2, 68, 1, 0, 59, 13, 10, 13, 10
+		71, 73, 70, 56, 57, 97, 1, 0, 1, 0, -128, 0, 0, -64, -64, -64,
+		0, 0, 0, 33, -7, 4, 1, 0, 0, 0, 0, 44, 0, 0, 0, 0,
+		1, 0, 1, 0, 0, 2, 2, 68, 1, 0, 59, 13, 10, 13, 10
     };
 
 }

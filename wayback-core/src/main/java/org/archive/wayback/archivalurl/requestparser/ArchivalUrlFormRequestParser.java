@@ -39,23 +39,17 @@ public class ArchivalUrlFormRequestParser extends FormRequestParser {
 	public ArchivalUrlFormRequestParser(BaseRequestParser wrapped) {
 		super(wrapped);
 	}
-	public WaybackRequest parse(HttpServletRequest httpRequest, 
+
+	public WaybackRequest parse(HttpServletRequest httpRequest,
 			AccessPoint accessPoint) throws BetterRequestException {
 		WaybackRequest wbRequest = super.parse(httpRequest, accessPoint);
-		if(wbRequest != null) {
-			String replayTimestamp = wbRequest.getReplayTimestamp();
-			if((replayTimestamp == null) || replayTimestamp.length() == 0) {
-				// lets call it a star query:
-				// TODO: should we clone?
-				wbRequest.setStartTimestamp(null);
-				wbRequest.setEndTimestamp(null);
-			}
+		if (wbRequest != null) {
 			String requestPath = 
 				accessPoint.translateRequestPathQuery(httpRequest);
 			ArchivalUrl aUrl = new ArchivalUrl(wbRequest);
 			String bestPath = aUrl.toString();
-			if(accessPoint.isForceCleanQueries()) {
-				if(!bestPath.equals(requestPath)) {
+			if (accessPoint.isForceCleanQueries()) {
+				if (!bestPath.equals(requestPath)) {
 					String betterURI = (wbRequest.isReplayRequest() ? 
 							accessPoint.getReplayPrefix() : 
 								accessPoint.getQueryPrefix()) 

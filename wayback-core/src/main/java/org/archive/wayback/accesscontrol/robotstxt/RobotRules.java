@@ -25,11 +25,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.archive.wayback.util.ByteOp;
@@ -52,9 +51,9 @@ public class RobotRules {
 	 */
 	public static final String GLOBAL_USER_AGENT = "*";
 	
-	protected static final Pattern USER_AGENT_PATTERN = Pattern.compile("(?i)^User-agent:.*");
-	protected static final Pattern DISALLOW_PATTERN = Pattern.compile("(?i)Disallow:.*");
-	protected static final Pattern ALLOW_PATTERN = Pattern.compile("(?i)Allow:.*");
+	protected static final Pattern USER_AGENT_PATTERN = Pattern.compile("(?i)^User-agent\\s*:(.*)");
+	protected static final Pattern DISALLOW_PATTERN = Pattern.compile("(?i)Disallow\\s*:(.*)");
+	protected static final Pattern ALLOW_PATTERN = Pattern.compile("(?i)Allow\\s*:(.*)");
 	
 	private boolean bSyntaxErrors = false;
 	private HashMap<String, ArrayList<String>> rules = 
@@ -90,8 +89,12 @@ public class RobotRules {
 				(InputStream) is,ByteOp.UTF8));
         String read;
         boolean allowRuleFound = false;
+        // true if curr or last line read was a User-agent line 
+        boolean currLineUA = false; 
+        boolean lastLineUA = false;
         ArrayList<String> current = null;
         while (br != null) {
+            lastLineUA = currLineUA;
             do {
                 read = br.readLine();
                 // Skip comments & blanks
@@ -101,33 +104,42 @@ public class RobotRules {
             	br.close();
             	br = null;
             } else {
+                currLineUA = false;
                 int commentIndex = read.indexOf("#");
                 if (commentIndex > -1) {
                     // Strip trailing comment
                     read = read.substring(0, commentIndex);
                 }
                 read = read.trim();
-                if (USER_AGENT_PATTERN.matcher(read).matches()) {
-                    String ua = read.substring(11).trim().toLowerCase();
-                    if (current == null || current.size() != 0 || allowRuleFound) {
+                Matcher uaMatcher = USER_AGENT_PATTERN.matcher(read);
+                if (uaMatcher.matches()) {
+                    String ua = uaMatcher.group(1).trim().toLowerCase();
+                    if (current == null || current.size() != 0 || allowRuleFound || !lastLineUA) {
                         // only create new rules-list if necessary
                         // otherwise share with previous user-agent
                         current = new ArrayList<String>();
                     }
                     rules.put(ua, current);
                     allowRuleFound = false;
+                    currLineUA = true;
                     LOGGER.fine("Found User-agent(" + ua + ") rules...");
                     continue;
-                } else if (DISALLOW_PATTERN.matcher(read).matches()) {
+                }
+                Matcher disallowMatcher = DISALLOW_PATTERN.matcher(read);
+                if (disallowMatcher.matches()) {
                 	if (current == null) {
                         // buggy robots.txt
                     	bSyntaxErrors = true;
                         continue;
                     }
-                    String path = read.substring(9).trim();
+                    String path = disallowMatcher.group(1).trim();
+					// Disallow: without path is just ignored.
+					if (!path.isEmpty())
                     current.add(path);
                     continue;
-                } else if (ALLOW_PATTERN.matcher(read).matches()) {
+                }
+                Matcher allowMatcher = ALLOW_PATTERN.matcher(read);
+                if (allowMatcher.matches()) {
                 	// Mark that there was an allow rule to clear the current list for next user-agent
                 	allowRuleFound = true;
                 }
@@ -140,30 +152,14 @@ public class RobotRules {
     }
 	
 	private boolean blocksPath(String path, String curUA, List<String> uaRules) {
-		
-		Iterator<String> disItr = uaRules.iterator();
-		while (disItr.hasNext()) {
-			String disallowedPath = disItr.next();
-			if (disallowedPath.length() == 0) {
-
-				if (LOGGER.isLoggable(Level.INFO)) {
-					LOGGER.info("UA(" + curUA
-							+ ") has empty disallow: Go for it!");
-				}
-				return false;
-
-			} else {
-				if (LOGGER.isLoggable(Level.FINE)) {
-					LOGGER.fine("UA(" + curUA + ") has (" + disallowedPath
-							+ ") blocked...(" + disallowedPath.length() + ")");
-				}
-				if (disallowedPath.equals("/") || path.startsWith(disallowedPath)) {
-					if (LOGGER.isLoggable(Level.INFO)) {
-						LOGGER.info("Rule(" + disallowedPath + ") applies to (" +
-								path + ")");
-					}
+		for (String disallowedPath : uaRules) {
+			if (disallowedPath.isEmpty()) {
+				// This is for extra caution. Empty path shouldn't be added
+				// to uaRules in the first place.
+				continue;
+			}
+			if (disallowedPath.equals("/") || path.startsWith(disallowedPath)) {
 					return true;
-				}
 			}
 		}
 		return false;
@@ -178,14 +174,12 @@ public class RobotRules {
 	 * @return boolean value where true indicates the path is blocked for ua
 	 */
 	public boolean blocksPathForUA(String path, String ua) {
-
-		if(rules.containsKey(ua.toLowerCase())) {
-
-			return blocksPath(path,ua,rules.get(ua.toLowerCase()));
-
-		} else if(rules.containsKey(GLOBAL_USER_AGENT)) {
-
-			return blocksPath(path,GLOBAL_USER_AGENT,
+		final String lcua = ua.toLowerCase();
+		if (rules.containsKey(lcua)) {
+			return blocksPath(path, ua, rules.get(lcua));
+		}
+		if (rules.containsKey(GLOBAL_USER_AGENT)) {
+			return blocksPath(path, GLOBAL_USER_AGENT,
 					rules.get(GLOBAL_USER_AGENT));			
 		}
 		return false;

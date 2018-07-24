@@ -1,12 +1,18 @@
-<%@   page import="org.archive.wayback.webapp.AccessPoint"
-%><%@ page import="org.archive.wayback.util.StringFormatter"
-%><%@ page import="java.util.Date"
-%><%
+<%@ page import="org.archive.wayback.webapp.AccessPoint"%>
+<%@ page import="org.archive.wayback.util.StringFormatter"%>
+<%@ page import="java.util.Date"%>
+
+<%
+UIResults results = UIResults.getGeneric(request);
+WaybackRequest wbRequest = results.getWbRequest();
+StringFormatter fmt = wbRequest.getFormatter();
+
 String toUrl = request.getParameter(AccessPoint.INTERSTITIAL_TARGET);
 if(toUrl == null) {
 	response.setStatus(400);
 %>
-    Bad request. require argument <%= AccessPoint.INTERSTITIAL_TARGET %>
+
+    <%= fmt.format("Interstitial.badRequest") %> require argument <%= AccessPoint.INTERSTITIAL_TARGET %>
 <%
 } else {
     String secsS = request.getParameter(AccessPoint.INTERSTITIAL_SECONDS);
@@ -44,7 +50,7 @@ if(toUrl == null) {
         <div id="positionHome">
             <section>
             <div id="logoHome">
-                <a href="/index.jsp"><h1><span>Internet Archive's Wayback Machine</span></h1></a>
+                <a href="/index.jsp"><h1><span>OpenWayback</span></h1></a>
             </div>
             </section>
             <section>
@@ -55,19 +61,19 @@ if(toUrl == null) {
 	}
 	window.setTimeout("go()",<%= secs * 1000 %>);
 	</script>
-	    <h2 class="blue">Welcome to Wayback.</h2>
-		<p class="code">Loading...</p>
+	    <h2 class="blue"><%= fmt.format("Interstitial.welcome") %></h2>
+		<p class="code"><%= fmt.format("UIGlobal.loading") %></p>
 		<%
 		if(safeReplayUrl != null && prettyReplayDate != null) {
 			%>
         <p class="code shift"><%= safeReplayUrl %></p>
-        <p class="code">as close to the date:</p>
+        <p class="code"><%= fmt.format("Interstitial.closeToDate") %></p>
         <p class="code shift"><%= prettyReplayDate %></p>
-        <p class="code">as is available..</p>
+        <p class="code"><%= fmt.format("Interstitial.available") %></p>
 			<%
 		}
 		%>
-		<p class="impatient"><a href="<%= safeTargetUrl %>">Impatient?</a></p>
+		<p class="impatient"><a href="<%= safeTargetUrl %>"><%= fmt.format("UIGlobal.impatient") %></a></p>
 <%	
 }
 %>

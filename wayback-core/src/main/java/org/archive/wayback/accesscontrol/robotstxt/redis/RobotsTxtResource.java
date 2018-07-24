@@ -8,8 +8,11 @@ import org.archive.wayback.core.Resource;
 
 public class RobotsTxtResource extends Resource {
 	
-	public RobotsTxtResource(String contents)
-	{
+	protected String contents;
+	
+	public RobotsTxtResource(String contents) {
+		this.contents = contents;
+		
 		// Skip BOM
 		if (!contents.isEmpty() && (contents.charAt(0) == ('\uFEFF'))) {
 			contents = contents.substring(1);
@@ -20,13 +23,10 @@ public class RobotsTxtResource extends Resource {
 	
 	@Override
 	public void close() throws IOException {
-		// TODO Auto-generated method stub
-		
 	}
 
 	@Override
 	public int getStatusCode() {
-		// TODO Auto-generated method stub
 		return 200;
 	}
 
@@ -41,5 +41,8 @@ public class RobotsTxtResource extends Resource {
 		// TODO Auto-generated method stub
 		return null;
 	}
-
+	
+	public String getContents() {
+		return contents;
+	}
 }

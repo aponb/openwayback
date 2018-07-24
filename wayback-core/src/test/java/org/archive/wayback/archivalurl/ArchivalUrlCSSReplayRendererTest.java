@@ -7,6 +7,7 @@ import java.io.IOException;
 
 import javax.servlet.http.HttpServletResponse;
 
+import junit.framework.Assert;
 import junit.framework.TestCase;
 
 import org.archive.io.warc.TestWARCReader;
@@ -18,19 +19,22 @@ import org.archive.wayback.core.CaptureSearchResult;
 import org.archive.wayback.core.Resource;
 import org.archive.wayback.core.WaybackRequest;
 import org.archive.wayback.replay.RedirectRewritingHttpHeaderProcessor;
-import org.archive.wayback.replay.TextDocument;
 import org.archive.wayback.replay.TextReplayRenderer;
 import org.archive.wayback.replay.TransparentReplayRendererTest.TestServletOutputStream;
-import org.archive.wayback.replay.html.ReplayParseContext;
 import org.archive.wayback.resourcestore.resourcefile.WarcResource;
-import org.archive.wayback.util.htmllex.ParseContext;
-import org.archive.wayback.util.htmllex.ParseEventHandler;
-import org.easymock.Capture;
 import org.easymock.EasyMock;
-import org.htmlparser.Node;
 
 /**
- * unit test for {@link ArchivalUrlSAXRewriteReplayRenderer}.
+ * unit test for {@link ArchivalCSSReplayRenderer}.
+ * <p>Uses a mock for {@link ResultURIConverter}. ResultURIConverter
+ * must be test separately. ArchivalCSSReplayRenderer does not use
+ * BlockCSSStringTransformer, but relies on TextDocument for extracting
+ * URLs in CSS. So this unit test does not verify those
+ * <code>StringTransformer</code>s are working correctly.</p>
+ * <p>ArchivalCSSReplayRenderer is still a primary ReplayRenderer
+ * for CSS resources (vs. CSS embedded in HTML) for both archival-URL
+ * and proxy mode.</p>
+ *
  * @author kenji
  *
  */
@@ -135,7 +139,7 @@ public class ArchivalUrlCSSReplayRendererTest extends TestCase {
                 "  background: transparent url(/web/20100101123456/http://www.example.com/bg.gif);\n" +
                 "}\n";
         String out = servletOutput.getString();
-        assertEquals("servlet output", expected, out);        
+        Assert.assertTrue( out.startsWith( expected ) );
     }
     
     // TODO: more tests

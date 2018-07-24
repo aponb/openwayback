@@ -36,6 +36,11 @@ public class ArchivalUrl {
 		this.wbRequest = wbRequest;
 	}
 
+        /**
+         *
+         * @return A string representation of this object.
+         */
+        @Override
 	public String toString() {
 		if(wbRequest.isReplayRequest()) {
 			return toReplayString(wbRequest.getRequestUrl());
@@ -44,27 +49,57 @@ public class ArchivalUrl {
 		}
 		return toPrefixQueryString(wbRequest.getRequestUrl()); 			
 	}
+    
 	public String toPrefixQueryString(String url) {
 		return toQueryString(url) + STAR;
 	}
+    
 	public String toQueryString(String url) {
 		String datespec = STAR;
-		if((wbRequest.getStartTimestamp() != null) && 
-				(wbRequest.getEndTimestamp() != null)) {
-			datespec = String.format("%s-%s%s",
-					wbRequest.getStartTimestamp(),wbRequest.getEndTimestamp(),
-					STAR);
-		}
-		return toString(datespec,url);
+        
+        String exactDateTimestamp = getEmptyStringIfNull(wbRequest.get(WaybackRequest.REQUEST_EXACT_DATE));
+        String startTimestamp = getEmptyStringIfNull(wbRequest.getStartTimestamp());
+        String endTimestamp = getEmptyStringIfNull(wbRequest.getEndTimestamp());
+        
+        if (!exactDateTimestamp.isEmpty()) {
+            datespec = exactDateTimestamp + STAR;
+        } else if (!startTimestamp.isEmpty() || !endTimestamp.isEmpty()) {
+            datespec = String.format("%s-%s%s", startTimestamp, endTimestamp, STAR);
+        }
+        
+		return toString(datespec, url);
 	}
+    
+    private String getEmptyStringIfNull(String string) {
+        if (string == null) {
+            return "";
+        } else {
+            return string;
+        }
+    }
 
 	public String toReplayString(String url) {
 		return toString(wbRequest.getReplayTimestamp(),url);
 	}
+        
+        /**
+	 * Create a new datespec + flags which represent the same options 
+         * as requested by the instances own WaybackRequest, using the constant WaybackRequest.REQUEST_DATE constant as
+         * a prefix.
+	 * @return a String representing the flags on the WaybackRequest.
+	 */
 	public String getDateSpec() {
 		return getDateSpec(wbRequest.getReplayTimestamp());
 	}
 	
+        
+        /**
+	 * Given a date, create a new datespec + flags which represent the same options 
+         * as requested by the instances own WaybackRequest.
+         * @param datespec The date specification prefix.
+	 * @return a String representing the flags on the WaybackRequest for the
+	 * specified date
+	 */
 	public String getDateSpec(String datespec) {
 		return getDateSpec(wbRequest, datespec);
 	}
@@ -72,7 +107,8 @@ public class ArchivalUrl {
 	/**
 	 * Given a date, create a new datespec + flags
 	 * which represent the same options as requested by the WaybackRequest
-	 * @param timestamp the 14-digit timestamp to use
+         * @param wbRequest
+         * @param datespec The date specification prefix.
 	 * @return a String representing the flags on the WaybackRequest for the
 	 * specified date
 	 */

@@ -2,8 +2,8 @@
  *  This file is part of the Wayback archival access software
  *   (http://archive-access.sourceforge.net/projects/wayback/).
  *
- *  Licensed to the Internet Archive (IA) by one or more individual 
- *  contributors. 
+ *  Licensed to the Internet Archive (IA) by one or more individual
+ *  contributors.
  *
  *  The IA licenses this file to You under the Apache License, Version 2.0
  *  (the "License"); you may not use this file except in compliance with
@@ -21,17 +21,20 @@ package org.archive.wayback.util.htmllex;
 
 import org.htmlparser.Node;
 import org.htmlparser.lexer.Lexer;
+import org.htmlparser.nodes.TagNode;
 import org.htmlparser.util.ParserException;
 
 /**
- * 
- * The Lexer that comes with htmlparser does not handle non-escaped HTML 
+ *
+ * The Lexer that comes with htmlparser does not handle non-escaped HTML
  * entities within SCRIPT tags - by default, something like:
- * 
- *    <script>
+ *
+ * <pre>
+ *    &lt;script>
  *      for(var i=0; i<23; i++) { j+=i; }
- *    </script>
- * 
+ *    &lt;/script>
+ * </pre>
+ *
  * Can cause the lexer to skip over a large part of the document. Technically,
  * the above isn't legit HTML, but of course, folks do stuff like that all the
  * time. So, this class uses a ParseContext object, passed in at construction,
@@ -39,7 +42,7 @@ import org.htmlparser.util.ParserException;
  * ParseContext, and using that state information to perform a parseCDATA()
  * call instead of a nextNode() call at the right time, to try to keep the
  * SAX parsing in sync with the document.
- * 
+ *
  * @author brad
  *
  */
@@ -53,21 +56,32 @@ public class ContextAwareLexer extends NodeUtils {
 	}
 	public Node nextNode() throws ParserException {
 		Node node = null;
-		if(context.isInJS()) {
+		if (context.isInJS()) {
 			node = lexer.parseCDATA(true);
-			if(node != null) {
+			if (node != null) {
 				context.setInScriptText(true);
 				context.setInJS(false);
 				return node;
 			}
+		} else if (context.isInScriptText()) {
+			node = lexer.parseCDATA(true);
+			if (node != null) {
+				return node;
+			}
 		}
-		context.setInScriptText(false);
 		node = lexer.nextNode(context.isInJS());
 		if(node != null) {
 			if(isNonEmptyOpenTagNodeNamed(node, SCRIPT_TAG_NAME)) {
-				context.setInJS(true);
+                TagNode tagNode = (TagNode) node;
+                // If <script> is declared as text/html, do not treat as
+                // JavaScript. See https://github.com/iipc/openwayback/pull/315
+                if (!"text/html"
+                        .equalsIgnoreCase(tagNode.getAttribute("type"))) {
+                    context.setInJS(true);
+                }
 			} else if(isCloseTagNodeNamed(node, SCRIPT_TAG_NAME)) {
 				context.setInJS(false);
+				context.setInScriptText(false);
 			} else if(isNonEmptyOpenTagNodeNamed(node, STYLE_TAG_NAME)) {
 				context.setInCSS(true);
 			} else if(isCloseTagNodeNamed(node, STYLE_TAG_NAME)) {
